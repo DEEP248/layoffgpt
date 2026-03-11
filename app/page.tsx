@@ -39,6 +39,17 @@ export default function Home() {
         e.preventDefault();
         setError(null);
 
+        // Frontend Validation
+        if (!formData.linkedinUrl.trim()) {
+            setError("We need your LinkedIn URL to properly roast you.");
+            return;
+        }
+
+        if (!formData.linkedinUrl.includes("linkedin.com/in/")) {
+            setError("That doesn't look like a valid LinkedIn profile URL.");
+            return;
+        }
+
         if (!formData.jobTitle.trim()) {
             setError("Please enter your job title — we need to know what to roast!");
             return;
@@ -175,16 +186,18 @@ export default function Home() {
                             {/* LinkedIn URL */}
                             <div>
                                 <label className="block text-gray-400 text-sm font-body mb-2">
-                                    LinkedIn Profile URL
-                                    <span className="text-gray-600 text-xs ml-2">(optional)</span>
+                                    LinkedIn Profile URL <span className="text-neon-pink">*</span>
                                 </label>
                                 <input
                                     type="url"
                                     name="linkedinUrl"
                                     value={formData.linkedinUrl}
                                     onChange={handleChange}
-                                    placeholder="https://linkedin.com/in/yourprofile"
+                                    placeholder="https://www.linkedin.com/in/yourprofile"
+                                    pattern="https?:\/\/(www\.)?linkedin\.com\/in\/.*"
+                                    title="Must be a valid LinkedIn profile URL (e.g. https://linkedin.com/in/username)"
                                     className="cyber-input w-full px-4 py-3 text-sm"
+                                    required
                                 />
                             </div>
 

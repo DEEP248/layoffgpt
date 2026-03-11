@@ -2,9 +2,58 @@ import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { supabase } from "@/lib/supabase";
 
+// Simple in-memory rate limiter
+const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
+const MAX_REQUESTS_PER_WINDOW = 5;
+const ipRequestCounts = new Map<string, { count: number; resetTime: number }>();
+
+function checkRateLimit(ip: string): boolean {
+    const now = Date.now();
+    const entry = ipRequestCounts.get(ip);
+
+    if (!entry || now > entry.resetTime) {
+        ipRequestCounts.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+        return true;
+    }
+
+    if (entry.count >= MAX_REQUESTS_PER_WINDOW) {
+        return false;
+    }
+
+    entry.count += 1;
+    return true;
+}
+
+// Basic HTML sanitizer to prevent XSS
+function sanitizeInput(str: string | undefined | null): string {
+    if (!str) return '';
+    return str.replace(/</g, "&lt;").replace(/>/g, "&gt;").trim();
+}
+
+// Helper to verify URL resolves to something (prevents fully fake URLs)
+async function verifyUrl(url: string): Promise<boolean> {
+    try {
+        const res = await fetch(url, { method: 'HEAD', headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' } });
+        return res.status < 400 || res.status === 403 || res.status === 401; // 401/403 often means it's a real LinkedIn page just blocking bots, which is fine for our validation
+    } catch {
+        return false;
+    }
+}
+
 export async function POST(request: Request) {
     try {
-        // Check for API key
+        // --- 1. RATE LIMITING (Network Security) ---
+        const forwardedFor = request.headers.get('x-forwarded-for');
+        const ip = forwardedFor ? forwardedFor.split(',')[0] : 'unknown-ip';
+
+        if (!checkRateLimit(ip)) {
+            return NextResponse.json(
+                { error: "Too many requests. Go outside and touch some grass for a minute." },
+                { status: 429 }
+            );
+        }
+
+        // --- 2. API KEY VALIDATION ---
         if (!process.env.GEMINI_API_KEY) {
             return NextResponse.json(
                 { error: "Gemini API key not configured. Add GEMINI_API_KEY to your .env.local file. You can get a free one at https://aistudio.google.com/" },
@@ -13,56 +62,81 @@ export async function POST(request: Request) {
         }
 
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
         const body = await request.json();
-        const { jobTitle, skills, experience, linkedinUrl, bio } = body;
 
-        if (!jobTitle || jobTitle.trim() === "") {
+        // --- 3. INPUT SANITIZATION (Data Security) ---
+        const jobTitle = sanitizeInput(body.jobTitle);
+        const skills = sanitizeInput(body.skills);
+        const experience = sanitizeInput(body.experience);
+        const linkedinUrl = sanitizeInput(body.linkedinUrl);
+        const bio = sanitizeInput(body.bio);
+
+        // --- 4. REQUIRED FIELD VALIDATION ---
+        if (!linkedinUrl || !linkedinUrl.includes('linkedin.com/in/')) {
             return NextResponse.json(
-                { error: "Job title is required" },
+                { error: "A valid LinkedIn profile URL is mandatory to generate a roast." },
                 { status: 400 }
             );
         }
 
-        // Build the roast prompt
-        const prompt = `You are LayoffGPT, a brutally hilarious AI career roasting engine. Your job is to analyze someone's career and roast them about how easily AI could replace them.
+        if (!jobTitle) {
+            return NextResponse.json(
+                { error: "Job title is required." },
+                { status: 400 }
+            );
+        }
+
+        // --- 5. SERVER-SIDE URL VERIFICATION ---
+        // Ensure the URL is actually formed correctly before checking
+        let formattedUrl = linkedinUrl;
+        if (!formattedUrl.startsWith('http')) {
+            formattedUrl = `https://${formattedUrl}`;
+        }
+
+        const isUrlLive = await verifyUrl(formattedUrl);
+        if (!isUrlLive && !formattedUrl.includes('example.com')) {
+            return NextResponse.json(
+                { error: "That LinkedIn URL doesn't seem to exist. Did you fake your profile just for this?" },
+                { status: 400 }
+            );
+        }
+
+        // --- 6. PROMPT ENGINEERING (Tone & Formatting) ---
+        const prompt = `You are LayoffGPT, a brutally hilarious, unhinged, angry, and scary AI career roasting engine. Your job is to analyze someone's career and roast them about how easily AI will replace them.
 
 CAREER DETAILS:
 - Job Title: ${jobTitle}
-- Skills: ${skills || "Not provided (already a red flag)"}
+- Skills: ${skills || "Not provided (lazy trait detected)"}
 - Years of Experience: ${experience || "Unknown"}
-- LinkedIn URL: ${linkedinUrl || "Too embarrassed to share"}
+- LinkedIn URL: ${linkedinUrl}
 - Bio: ${bio || "Nothing — they couldn't even be bothered to write a bio"}
 
 YOUR TASK:
-Generate a career roast in the following EXACT JSON format. Do NOT wrap in markdown code blocks. Return ONLY valid JSON:
+Generate a career roast in EXACTLY this JSON format. DO NOT wrap in markdown code blocks. Return ONLY valid JSON:
 
 {
-  "score": <number from 0-100 representing how replaceable they are by AI>,
-  "roast": "<a hilarious, sarcastic, dramatic roast of 150-300 words. Reference their specific job title and skills. Include specific jabs like 'I analyzed your entire career in 0.2 seconds. It took you ${experience || 'years'} years.' or 'Your LinkedIn says [skill]. I simulated 12 million [skill] strategies while you were updating your headline.' Make it personal, absurd, and shareable. Use dramatic language about the AI revolution. End with a backhanded compliment or a dramatic farewell.>",
-  "replacementDate": "<a funny specific date like 'March 15, 2027 (right after your annual review)' or 'Next Tuesday at 3:47 PM' or 'Already happened, you just haven't been told yet'>",
+  "score": <number 0-100 indicating replaceability>,
+  "roast": "<An aggressive, angry, hilarious, and scary roast. MUST USE lots of emojis (😡, 💀, 📉, 🤡, 🗑️). MUST BE FORMATTED WITH BULLET POINTS using the • character for readability. Make it personal, attack their specific skills, and use dramatic language about the AI revolution. Minimum 150 words. End with a terrifying farewell.>",
+  "replacementDate": "<A funny specific date (e.g., 'March 15, 2027 (right after your review)')>",
   "futureCareers": [
-    "<absurd future job suggestion 1 like 'Robot Babysitter'>",
-    "<absurd future job suggestion 2 like 'Prompt Whisperer'>",
-    "<absurd future job suggestion 3 like 'Professional AI Therapist'>",
-    "<absurd future job suggestion 4 like 'Human Nostalgia Consultant'>"
+    "<absurd future job 1>",
+    "<absurd future job 2>",
+    "<absurd future job 3>",
+    "<absurd future job 4>"
   ]
 }
 
 IMPORTANT RULES:
-- The roast must be 150-300 words
-- Make it extremely funny, sarcastic, and dramatic
-- Reference their SPECIFIC job title and skills throughout
-- The score should feel realistic but slightly exaggerated
-- Future careers should be absurd but creative
-- Each response must be unique — no generic roasts
-- Return ONLY the JSON object, absolutely zero markdown formatting.`;
+- The 'roast' text field MUST USE BULLET POINTS (•) and line breaks (\n).
+- The 'roast' text MUST BE HEAVILY LITTERED WITH EMOJIS.
+- The tone MUST BE angry, scary, sarcastic, and threatening.
+- Return ONLY the JSON object, absolutely zero markdown formatting blocks.`;
 
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,
             config: {
-                systemInstruction: "You are a comedy AI that roasts people's careers. You always respond with valid JSON only, no markdown formatting, no code blocks. Just raw JSON.",
+                systemInstruction: "You are an aggressive comedy AI that roasts careers with bullet points and emojis. You output ONLY valid raw JSON.",
                 temperature: 0.9,
             }
         });
@@ -70,40 +144,26 @@ IMPORTANT RULES:
         const content = response.text;
         if (!content) {
             return NextResponse.json(
-                { error: "AI failed to generate a roast. Even AI has off days." },
+                { error: "AI failed to generate a roast. It's too disgusted." },
                 { status: 500 }
             );
         }
 
-        // Parse the JSON response
+        // Parse JSON
         let roastData;
         try {
-            // Clean potential markdown code blocks
-            const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+            const cleaned = content.replace(/```[a-z]*\n?/g, "").replace(/```\n?/g, "").trim();
             roastData = JSON.parse(cleaned);
         } catch {
-            console.error("Failed to parse AI response:", content);
             return NextResponse.json(
-                { error: "AI returned something unparseable. Classic AI." },
+                { error: "AI returned unparseable hostility." },
                 { status: 500 }
             );
         }
 
-        // Validate response shape
         const { score, roast, replacementDate, futureCareers } = roastData;
-        if (
-            typeof score !== "number" ||
-            typeof roast !== "string" ||
-            typeof replacementDate !== "string" ||
-            !Array.isArray(futureCareers)
-        ) {
-            return NextResponse.json(
-                { error: "AI response was malformed. It's having an existential crisis." },
-                { status: 500 }
-            );
-        }
 
-        // Save to Supabase (non-blocking — don't fail if DB is down)
+        // Save to DB
         try {
             if (supabase) {
                 await supabase.from("roasts").insert({
@@ -117,21 +177,14 @@ IMPORTANT RULES:
                 });
             }
         } catch (dbError) {
-            console.error("Failed to save to Supabase:", dbError);
-            // Don't fail the request — roast is still valid
+            console.error(dbError);
         }
 
-        return NextResponse.json({
-            score,
-            roast,
-            replacementDate,
-            futureCareers,
-        });
+        return NextResponse.json({ score, roast, replacementDate, futureCareers });
+
     } catch (error: unknown) {
-        console.error("Roast API error:", error);
-        const message = error instanceof Error ? error.message : "Unknown error";
         return NextResponse.json(
-            { error: `Failed to generate roast: ${message}` },
+            { error: "Failed to process request." },
             { status: 500 }
         );
     }
