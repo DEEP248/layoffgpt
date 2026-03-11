@@ -1,20 +1,18 @@
 import { NextResponse } from "next/server";
-import OpenAI from "openai";
+import { GoogleGenAI } from "@google/genai";
 import { supabase } from "@/lib/supabase";
 
 export async function POST(request: Request) {
     try {
         // Check for API key
-        if (!process.env.OPENAI_API_KEY) {
+        if (!process.env.GEMINI_API_KEY) {
             return NextResponse.json(
-                { error: "OpenAI API key not configured. Add OPENAI_API_KEY to your .env.local file." },
+                { error: "Gemini API key not configured. Add GEMINI_API_KEY to your .env.local file. You can get a free one at https://aistudio.google.com/" },
                 { status: 500 }
             );
         }
 
-        const openai = new OpenAI({
-            apiKey: process.env.OPENAI_API_KEY,
-        });
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
         const body = await request.json();
         const { jobTitle, skills, experience, linkedinUrl, bio } = body;
@@ -58,25 +56,18 @@ IMPORTANT RULES:
 - The score should feel realistic but slightly exaggerated
 - Future careers should be absurd but creative
 - Each response must be unique — no generic roasts
-- Do NOT use markdown. Return ONLY the JSON object.`;
+- Return ONLY the JSON object, absolutely zero markdown formatting.`;
 
-        const completion = await openai.chat.completions.create({
-            model: "gpt-3.5-turbo",
-            messages: [
-                {
-                    role: "system",
-                    content: "You are a comedy AI that roasts people's careers. You always respond with valid JSON only, no markdown formatting, no code blocks. Just raw JSON.",
-                },
-                {
-                    role: "user",
-                    content: prompt,
-                },
-            ],
-            temperature: 0.9,
-            max_tokens: 1000,
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt,
+            config: {
+                systemInstruction: "You are a comedy AI that roasts people's careers. You always respond with valid JSON only, no markdown formatting, no code blocks. Just raw JSON.",
+                temperature: 0.9,
+            }
         });
 
-        const content = completion.choices[0]?.message?.content;
+        const content = response.text;
         if (!content) {
             return NextResponse.json(
                 { error: "AI failed to generate a roast. Even AI has off days." },

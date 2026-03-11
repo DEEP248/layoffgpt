@@ -64,15 +64,14 @@ Wait for it to finish (may take 1-2 minutes).
 
 ---
 
-## Step 3 — Get Your OpenAI API Key
+## Step 3 — Get Your Gemini API Key
 
-1. Go to **https://platform.openai.com/signup** and create an account
-2. Go to **https://platform.openai.com/api-keys**
-3. Click **"Create new secret key"**
-4. Copy the key (starts with `sk-...`) — **save it somewhere safe!**
-5. Add billing: Go to **https://platform.openai.com/account/billing** → Add a payment method
+1. Go to **https://aistudio.google.com/app/apikey**
+2. Sign in with your Google account
+3. Click **"Create API Key"** and create one in a new project
+4. Copy the key (starts with `AIza...`) — **save it somewhere safe!**
 
-> ⚠️ Each roast costs approximately $0.002-$0.01. Very cheap!
+> 💡 The Gemini API free tier is extremely generous. You can generate thousands of roasts for free without entering a credit card.
 
 ---
 
@@ -119,7 +118,7 @@ CREATE POLICY "Allow public reads" ON roasts FOR SELECT USING (true);
 3. Open `.env.local` and fill in your values:
 
 ```env
-OPENAI_API_KEY=sk-your-actual-key-here
+GEMINI_API_KEY=AIza-your-actual-key-here
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...your-key
 ```
@@ -174,7 +173,7 @@ git push -u origin main
 
 | Name | Value |
 |------|-------|
-| `OPENAI_API_KEY` | `sk-your-key-here` |
+| `GEMINI_API_KEY` | `AIza-your-key-here` |
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://your-project.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `eyJ...your-key` |
 
