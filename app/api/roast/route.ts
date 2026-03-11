@@ -92,32 +92,34 @@ CAREER DETAILS:
 - Bio: ${bio || "Nothing — they couldn't even be bothered to write a bio"}
 
 YOUR TASK:
-Generate a career roast in EXACTLY this JSON format. DO NOT wrap in markdown code blocks. Return ONLY valid JSON:
-
-{
-  "score": <number 0-100 indicating replaceability>,
-  "roast": "<An aggressive, angry, hilarious, and scary roast. MUST USE lots of emojis (😡, 💀, 📉, 🤡, 🗑️). MUST BE FORMATTED WITH BULLET POINTS using the • character for readability. Make it personal, attack their specific skills, and use dramatic language about the AI revolution. Minimum 150 words. End with a terrifying farewell.>",
-  "replacementDate": "<A funny specific date (e.g., 'March 15, 2027 (right after your review)')>",
-  "futureCareers": [
-    "<absurd future job 1>",
-    "<absurd future job 2>",
-    "<absurd future job 3>",
-    "<absurd future job 4>"
-  ]
-}
-
-IMPORTANT RULES:
-- The 'roast' text field MUST USE BULLET POINTS (•) and line breaks (\n).
-- The 'roast' text MUST BE HEAVILY LITTERED WITH EMOJIS.
-- The tone MUST BE angry, scary, sarcastic, and threatening.
-- Return ONLY the JSON object, absolutely zero markdown formatting blocks.`;
+Generate a career roast. 
+Score: 0-100 indicating replaceability.
+Roast length: Minimum 150 words.
+Roast formatting: MUST USE lots of emojis (😡, 💀, 📉, 🤡, 🗑️). MUST BE FORMATTED WITH BULLET POINTS using the • character for readability. Use line breaks (\\n) between bullet points.
+Tone: Make it personal, attack their specific skills (or lack thereof), and use dramatic language about the AI revolution. End with a terrifying farewell. Avoid generic responses at all costs.
+Replacement Date: A funny specific date.
+Future Careers: 4 absurd future job suggestions.`;
 
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,
             config: {
-                systemInstruction: "You are an aggressive comedy AI that roasts careers with bullet points and emojis. You output ONLY valid raw JSON.",
+                systemInstruction: "You are an aggressive comedy AI that roasts careers with bullet points and emojis.",
                 temperature: 0.9,
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: "OBJECT",
+                    properties: {
+                        score: { type: "INTEGER" },
+                        roast: { type: "STRING" },
+                        replacementDate: { type: "STRING" },
+                        futureCareers: {
+                            type: "ARRAY",
+                            items: { type: "STRING" }
+                        }
+                    },
+                    required: ["score", "roast", "replacementDate", "futureCareers"]
+                }
             }
         });
 
@@ -132,8 +134,7 @@ IMPORTANT RULES:
         // Parse JSON
         let roastData;
         try {
-            const cleaned = content.replace(/```[a-z]*\n?/g, "").replace(/```\n?/g, "").trim();
-            roastData = JSON.parse(cleaned);
+            roastData = JSON.parse(content);
         } catch {
             return NextResponse.json(
                 { error: "AI returned unparseable hostility." },
