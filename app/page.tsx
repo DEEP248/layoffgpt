@@ -50,11 +50,6 @@ export default function Home() {
             return;
         }
 
-        if (!formData.jobTitle.trim()) {
-            setError("Please enter your job title — we need to know what to roast!");
-            return;
-        }
-
         setIsLoading(true);
 
         try {
@@ -70,7 +65,7 @@ export default function Home() {
             }
 
             const data = await res.json();
-            setResult({ ...data, jobTitle: formData.jobTitle });
+            setResult({ ...data, jobTitle: data.jobTitle || formData.jobTitle || "Your Career" });
         } catch (err: unknown) {
             const errorMessage = err instanceof Error ? err.message : "Something went wrong. Even AI makes mistakes sometimes.";
             setError(errorMessage);
@@ -204,7 +199,7 @@ export default function Home() {
                             {/* Job Title */}
                             <div>
                                 <label className="block text-gray-400 text-sm font-body mb-2">
-                                    Job Title <span className="text-neon-pink">*</span>
+                                    Job Title <span className="text-gray-600 text-xs ml-2">(optional, overridden if LinkedIn is public)</span>
                                 </label>
                                 <input
                                     type="text"
@@ -213,7 +208,6 @@ export default function Home() {
                                     onChange={handleChange}
                                     placeholder="e.g. Senior Product Manager"
                                     className="cyber-input w-full px-4 py-3 text-sm"
-                                    required
                                 />
                             </div>
 

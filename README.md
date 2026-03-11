@@ -43,7 +43,12 @@ npm install
 1. Go to [Google AI Studio](https://aistudio.google.com/app/apikey).
 2. Sign in and click "Create API Key".
 
-**B. Supabase (For the Leaderboard Database):**
+**B. Apify (For Real LinkedIn Scraping):**
+1. Go to [Apify Console](https://console.apify.com/) and create a free account.
+2. Go to **Settings -> Integrations** to generate a personal API token.
+3. You get $5/month of free usage, which is enough to scrape thousands of profiles for free.
+
+**C. Supabase (For the Leaderboard Database):**
 1. Go to [Supabase](https://supabase.com/) and create a free project.
 2. Go to **Project Settings -> API** to find your `URL` and `anon public` key.
 3. Go to **SQL Editor** and run this snippet to create the table:
@@ -71,6 +76,7 @@ Create a file named `.env.local` in the root of the project and add your keys:
 
 ```env
 GEMINI_API_KEY=AIza-your-gemini-key
+APIFY_API_TOKEN=apify_api_your_token
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...your-supabase-key
 ```
@@ -99,5 +105,5 @@ The easiest way to deploy this app is on Vercel:
 1. Push your code to a GitHub repository.
 2. Go to [Vercel.com](https://vercel.com/) and click **Add New -> Project**.
 3. Import your GitHub repository.
-4. **Important:** Add the exact identical Environment Variables (`GEMINI_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) in the Vercel deployment settings.
+4. **Important:** Add all 4 Environment Variables (`GEMINI_API_KEY`, `APIFY_API_TOKEN`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) in the Vercel deployment settings.
 5. Click **Deploy**.

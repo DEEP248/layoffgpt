@@ -4,11 +4,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
 
 const loadingMessages = [
-    { text: "Scanning LinkedIn profile...", icon: "🔍" },
-    { text: "Analyzing skills...", icon: "🧠" },
+    { text: "Bypassing LinkedIn security...", icon: "🔓" },
+    { text: "Scraping your public profile...", icon: "🕵️" },
+    { text: "Judging your terrible headline...", icon: "👀" },
+    { text: "Analyzing your 'skills'...", icon: "🧠" },
     { text: "Consulting robot overlords...", icon: "🤖" },
     { text: "Calculating replaceability...", icon: "📊" },
-    { text: "Generating career obituary...", icon: "⚰️" },
     { text: "Preparing your roast...", icon: "🔥" },
 ];
 
