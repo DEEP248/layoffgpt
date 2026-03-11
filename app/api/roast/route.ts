@@ -30,16 +30,6 @@ function sanitizeInput(str: string | undefined | null): string {
     return str.replace(/</g, "&lt;").replace(/>/g, "&gt;").trim();
 }
 
-// Helper to verify URL resolves to something (prevents fully fake URLs)
-async function verifyUrl(url: string): Promise<boolean> {
-    try {
-        const res = await fetch(url, { method: 'HEAD', headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' } });
-        return res.status < 400 || res.status === 403 || res.status === 401; // 401/403 often means it's a real LinkedIn page just blocking bots, which is fine for our validation
-    } catch {
-        return false;
-    }
-}
-
 export async function POST(request: Request) {
     try {
         // --- 1. RATE LIMITING (Network Security) ---
@@ -87,19 +77,9 @@ export async function POST(request: Request) {
         }
 
         // --- 5. SERVER-SIDE URL VERIFICATION ---
-        // Ensure the URL is actually formed correctly before checking
-        let formattedUrl = linkedinUrl;
-        if (!formattedUrl.startsWith('http')) {
-            formattedUrl = `https://${formattedUrl}`;
-        }
-
-        const isUrlLive = await verifyUrl(formattedUrl);
-        if (!isUrlLive && !formattedUrl.includes('example.com')) {
-            return NextResponse.json(
-                { error: "That LinkedIn URL doesn't seem to exist. Did you fake your profile just for this?" },
-                { status: 400 }
-            );
-        }
+        // Removed `verifyUrl` ping because LinkedIn's aggressive bot protection frequently returns 
+        // 999 or 403 blocks even for entirely valid URLs, causing false-positive rejections.
+        // The pattern match `includes('linkedin.com/in/')` above is sufficient for format validation.
 
         // --- 6. PROMPT ENGINEERING (Tone & Formatting) ---
         const prompt = `You are LayoffGPT, a brutally hilarious, unhinged, angry, and scary AI career roasting engine. Your job is to analyze someone's career and roast them about how easily AI will replace them.
