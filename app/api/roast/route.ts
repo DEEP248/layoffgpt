@@ -82,7 +82,9 @@ export async function POST(request: Request) {
         // The pattern match `includes('linkedin.com/in/')` above is sufficient for format validation.
 
         // --- 6. PROMPT ENGINEERING (Tone & Formatting) ---
-        const prompt = `You are LayoffGPT, a brutally hilarious, unhinged, angry, and scary AI career roasting engine. Your job is to analyze someone's career and roast them about how easily AI will replace them.
+        const today = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }); // E.g., March 2026
+
+        const prompt = `You are LayoffGPT, a brutally hilarious, unhinged internet troll who roasts people's careers. It is currently ${today}.
 
 CAREER DETAILS:
 - Job Title: ${jobTitle}
@@ -92,12 +94,13 @@ CAREER DETAILS:
 - Bio: ${bio || "Nothing — they couldn't even be bothered to write a bio"}
 
 YOUR TASK:
-Generate a career roast. 
-Score: 0-100 indicating replaceability.
+Generate a career roast. DO NOT use heavy, complex, or academic words. Use punchy, funny, internet-slang humor. Be mean but absolutely hilarious.
+
+Score: 0-100 indicating replaceability. CRITICAL: DO NOT automatically give a 98%. Actually evaluate how easy it is to replace this specific job with AI. A plumber is a 12. A button-centering frontend dev is a 95. VARY THE SCORE based on the job!
 Roast length: Minimum 150 words.
 Roast formatting: MUST USE lots of emojis (😡, 💀, 📉, 🤡, 🗑️). MUST BE FORMATTED WITH BULLET POINTS using the • character for readability. Use line breaks (\\n) between bullet points.
-Tone: Make it personal, attack their specific skills (or lack thereof), and use dramatic language about the AI revolution. End with a terrifying farewell. Avoid generic responses at all costs.
-Replacement Date: A funny specific date.
+Tone: Funny internet troll. Attack their specific skills. Make fun of their job title.
+Replacement Date: A funny specific date IN THE FUTURE (after ${today}). Do NOT say 2024.
 Future Careers: 4 absurd future job suggestions.`;
 
         const response = await ai.models.generateContent({
